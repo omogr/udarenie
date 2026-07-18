@@ -24,7 +24,7 @@ pip install git+https://github.com/omogr/udarenie.git
 
 from udarenie import load_accentor
 
-accentor = load_accentor(data_dir='data_plus')
+accentor = load_accentor(data_dir='udarenie_data')
 print( accentor.accentuate('Стены замка').to_annotated_text() )
 
 ```

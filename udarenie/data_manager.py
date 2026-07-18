@@ -69,7 +69,7 @@ def ensure_data(data_dir: Path = None, force: bool = False) -> Path:
         logger.info("Data already present at %s", data_dir)
         return data_dir
         
-    print('ensure_data', data_dir)
+    print('Downloading data. Data directory:', data_dir)
 
     # Download and extract each archive
     for url in DATA_URLS:

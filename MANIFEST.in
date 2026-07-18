@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include requirements.txt
+include udarenie/VERSION
+recursive-include udarenie *.py
+recursive-include udarenie *.txt
+recursive-include udarenie *.pq
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]

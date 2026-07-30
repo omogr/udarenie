@@ -12,6 +12,7 @@ Quick start:
 Or with explicit configuration:
     accentor = load_accentor(
         use_morph=True,
+        user_dict={"замок": "з+амок"},
         data_dir="/path/to/data",
         auto_download=True
     )
@@ -37,13 +38,14 @@ logger = logging.getLogger(__name__)
 
 class Accentor:
     """
-    Unified accentor callable. Wraps either AccentEngine alone or
-    AccentEngine + MorphAccentEnhancer.
+    Unified accentor callable. Wraps either AccentEngine alone,
+    AccentEngine + MorphAccentEnhancer, or full chain with UserDict.
     """
 
-    def __init__(self, engine, enhancer=None):
+    def __init__(self, engine, enhancer=None, user_dict_enhancer=None):
         self._engine = engine
         self._enhancer = enhancer
+        self._user_dict_enhancer = user_dict_enhancer
 
     def __call__(self, text: str) -> str:
         """Accentuate text and return annotated string (+ before stressed vowel)."""
@@ -51,6 +53,8 @@ class Accentor:
 
     def accentuate(self, text: str):
         """Return full DocumentResult object with metadata."""
+        if self._user_dict_enhancer is not None:
+            return self._user_dict_enhancer.accentuate(text)
         if self._enhancer is not None:
             return self._enhancer.accentuate(text)
         return self._engine.accentuate(text)
@@ -76,6 +80,7 @@ class Accentor:
 
 def load_accentor(
     use_morph: bool = True,
+    user_dict: Optional[Union[dict[str, str], str, Path]] = None,
     data_dir: Optional[Union[str, Path]] = None,
     auto_download: bool = True,
     force_download: bool = False,
@@ -89,6 +94,10 @@ def load_accentor(
     use_morph : bool, default True
         If True, use morph enhancer for better quality.
         If False, use only accent_engine (faster, lower quality).
+    user_dict : dict or str or Path, optional
+        User dictionary for overriding stress positions.
+        - dict: {"word": "stressed_form", ...}
+        - str/Path: path to JSON file with user dictionary
     data_dir : str or Path, optional
         Path to data directory. If None, uses default cache location
         (~/.cache/russian_accentor/data).
@@ -110,9 +119,9 @@ def load_accentor(
     >>> accentor("Меня зовут Лёва.")
     'Мен+я зов+ут Л+ёва.'
 
-    >>> accentor = load_accentor(use_morph=False)
-    >>> accentor("Меня зовут Лёва.")
-    'Мен+я зов+ут Л+ёва.'
+    >>> accentor = load_accentor(user_dict={"замок": "з+амок"})
+    >>> accentor("Замок был крепким.")
+    'З+амок был кр+епким.'
     """
     
     if data_dir is None:
@@ -141,6 +150,7 @@ def load_accentor(
     config = AccentConfig(data_path=accent_engine_data, **engine_kwargs)
     engine = AccentEngine(config)
 
+    enhancer = None
     if use_morph:
         if not morph_data.exists():
             raise FileNotFoundError(
@@ -150,6 +160,25 @@ def load_accentor(
         from .morph_enhancer import MorphAccentEnhancer, MorphStressFinder
         finder = MorphStressFinder(str(morph_data))
         enhancer = MorphAccentEnhancer(engine, finder)
-        return Accentor(engine, enhancer)
 
-    return Accentor(engine)
+    # --- User Dictionary Enhancer ---
+    user_dict_enhancer = None
+    if user_dict is not None:
+        from .user_dict_enhancer import UserDictAccentEnhancer
+        
+        upstream = enhancer if enhancer is not None else engine
+        
+        if isinstance(user_dict, (str, Path)):
+            user_dict_enhancer = UserDictAccentEnhancer(
+                upstream, user_dict_path=user_dict
+            )
+        elif isinstance(user_dict, dict):
+            user_dict_enhancer = UserDictAccentEnhancer(
+                upstream, user_dict=user_dict
+            )
+        else:
+            raise TypeError(
+                f"user_dict must be dict, str or Path, got {type(user_dict).__name__}"
+            )
+
+    return Accentor(engine, enhancer, user_dict_enhancer)

@@ -72,6 +72,7 @@ class StressMethod(Enum):
     NON_WORD = auto()       # not a Russian word (punctuation, tags, numbers)
     LLM = auto()
     MORPH = auto()
+    USER_DICT = auto()
 
 
 class OutputFormat(Enum):

@@ -270,4 +270,4 @@ except ModelLoadError as e:
 
 ## Лицензия
 
-MIT License. См. [LICENSE](LICENSE).
+Apache License 2.0. См. [LICENSE](LICENSE).
